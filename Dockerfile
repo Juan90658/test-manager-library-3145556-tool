@@ -1,5 +1,4 @@
-FROM node:22-alpine
+FROM php:8.3-cli
 WORKDIR /tool
-COPY package.json ./
 COPY src ./src
-CMD ["node", "src/seed.mjs"]
+CMD ["php", "src/seed.php"]

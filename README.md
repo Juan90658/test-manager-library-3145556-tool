@@ -1,7 +1,7 @@
 # test-manager-library-3145556-tool
 
 > **Technical test · ADSO 3145556** — *Manager Library* utilities: demo data seeder and search load test.
-> Both use **the API only**, never SQL (data-model §9). Node 20+, no dependencies.
+> Both use **the API only**, never SQL (data-model §9). Plain PHP 8.3 with the curl extension, no dependencies.
 
 ## Demo seeder (T-21)
 
@@ -13,7 +13,7 @@ docker compose --profile seed up --build seed
 
 # or against running APIs
 API_URL=http://localhost:8000/api/v1 API_PAST_URL=http://localhost:8001/api/v1 \
-ADMIN_USERNAME=admin ADMIN_PASSWORD=… npm run seed
+ADMIN_USERNAME=admin ADMIN_PASSWORD=… php src/seed.php
 ```
 
 **Why two URLs.** `due_at = loaned_at + 14 days` and the server sets `loaned_at`, so an overdue loan cannot be created
@@ -43,7 +43,7 @@ It only runs on an empty catalog; a second run does nothing.
 Fills the catalog up to 5,000 books through the API and times `GET /books?q=…`.
 
 ```bash
-API_URL=http://localhost:8000/api/v1 ADMIN_USERNAME=admin ADMIN_PASSWORD=… npm run load-test
+API_URL=http://localhost:8000/api/v1 ADMIN_USERNAME=admin ADMIN_PASSWORD=… php src/load-test.php
 ```
 
-Local result: `searches: 30 · median 22.0 ms · p95 27.2 ms · max 27.8 ms` → **OK, under 300 ms**.
+Local result: `searches: 30 · median 21.2 ms · p95 28.8 ms · max 31.2 ms` → **OK, under 300 ms**.
