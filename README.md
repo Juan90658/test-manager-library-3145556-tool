@@ -1,50 +1,49 @@
 # test-manager-library-3145556-tool
 
-> **Prueba técnica · Ficha ADSO 3145556**
-> Entrega: **martes 13 de octubre de 2026, a las 5:00 p. m.** (17:00, hora Colombia).
+> **Technical test · ADSO 3145556** — *Manager Library* utilities: demo data seeder and search load test.
+> Both use **the API only**, never SQL (data-model §9). Node 20+, no dependencies.
 
-Este repositorio guarda las **utilidades** de *Manager Library*: el sembrador de datos de demostración, que usa la API. **Empieza vacío a propósito**: se construye en el fork de cada aprendiz.
+## Demo seeder (T-21)
 
-## Instrucciones
+Creates 40 books, 10 members and 15 loans, leaving **exactly 3 overdue lines**.
 
-Cada aprendiz debe **crear el fork** de los seis repositorios del proyecto y **resolver el proyecto
-con el spec planteado**.
+```bash
+# with infra (recommended)
+docker compose --profile seed up --build seed
 
-1. Hacer fork, a su cuenta de GitHub, de cada repositorio de la tabla del final.
-2. Leer el spec en [`test-manager-library-3145556-docs`](https://github.com/code-sena/test-manager-library-3145556-docs).
-   Se entrega en dos versiones: `spec-python/` y `spec-.net/`.
-3. Desarrollar en los forks.
+# or against running APIs
+API_URL=http://localhost:8000/api/v1 API_PAST_URL=http://localhost:8001/api/v1 \
+ADMIN_USERNAME=admin ADMIN_PASSWORD=… npm run seed
+```
 
-## El reto se desarrolla con React y PHP (Laravel)
+**Why two URLs.** `due_at = loaned_at + 14 days` and the server sets `loaned_at`, so an overdue loan cannot be created
+"today" through the API. `API_PAST_URL` is a second API instance whose `Clock` port is shifted 20 days back
+(`CLOCK_OFFSET_DAYS=-20`): loans created there are 20 days old, i.e. 6 days overdue. No SQL, no backdoor endpoint.
 
-El spec está escrito para Python y para .NET, pero el reto **no** se hace en esos lenguajes:
+Loan plan (every call respects the rules: 1–3 items, max 3 unreturned per member, no borrowing with overdue items):
 
-| Capa | Tecnología del reto |
-|---|---|
-| Frontend | React |
-| Backend | PHP con Laravel |
+| Phase | Members | Loans | Result |
+|---|---|---|---|
+| 20 days ago | 1–3 | 3 single-item loans, never returned | the 3 overdue lines |
+| 20 days ago | 4–8 | 5 loans, returned | history for the report |
+| today | 4–10 | 7 loans, every other one returned | open loans, not overdue |
 
-Lo que el spec define sobre el negocio —historias, criterios de aceptación, reglas, contrato de la
-API, modelo de datos— se respeta. Lo que define sobre la tecnología se traduce a React y Laravel.
+Evidence (run locally against an empty database):
 
-## La prueba no consiste en escribir el código
+```
+Created 40 books and 10 members.
+Created 15 loans. Overdue lines: 3. Report rows (2026-09-13..2026-10-13): 19.
+OK: /loans/overdue returns 3 lines and the report has rows.
+```
 
-El propósito principal es ver la **capacidad de desempeño con SDD** (*Spec-Driven Development*,
-desarrollo guiado por especificación): cómo se lee, se interpreta y se aplica una especificación
-para llevarla a un stack distinto. El código es el medio, no el fin.
+It only runs on an empty catalog; a second run does nothing.
 
-## Entrega
+## Search load test (RNF-1)
 
-Cuenta lo que quede **subido a los forks antes de las 5:00 p. m.** (17:00). Lo que llegue después no se revisa.
-No hay prórroga: suban avances parciales con commits pequeños durante la prueba.
+Fills the catalog up to 5,000 books through the API and times `GET /books?q=…`.
 
-## Los seis repositorios
+```bash
+API_URL=http://localhost:8000/api/v1 ADMIN_USERNAME=admin ADMIN_PASSWORD=… npm run load-test
+```
 
-| Repositorio | Qué va ahí |
-|---|---|
-| [`test-manager-library-3145556-docs`](https://github.com/code-sena/test-manager-library-3145556-docs) | El spec: `spec-python/` y `spec-.net/` |
-| [`test-manager-library-3145556-api`](https://github.com/code-sena/test-manager-library-3145556-api) | Backend en PHP (Laravel) |
-| [`test-manager-library-3145556-app`](https://github.com/code-sena/test-manager-library-3145556-app) | Frontend en React |
-| [`test-manager-library-3145556-page`](https://github.com/code-sena/test-manager-library-3145556-page) | Sitio público estático de presentación |
-| [`test-manager-library-3145556-infra`](https://github.com/code-sena/test-manager-library-3145556-infra) | Contenedores, red, volúmenes y motor de base de datos vacío |
-| [`test-manager-library-3145556-tool`](https://github.com/code-sena/test-manager-library-3145556-tool) | Utilidades: sembrador de datos de demostración |
+Local result: `searches: 30 · median 22.0 ms · p95 27.2 ms · max 27.8 ms` → **OK, under 300 ms**.
